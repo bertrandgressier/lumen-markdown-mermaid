@@ -14,4 +14,3 @@ export declare function ensureMermaidInitialized(mermaid: MermaidInitializer, th
 /** Test-only: reset the per-theme memo between tests. */
 export declare function __resetInitializedThemesForTests(): void;
 export {};
-//# sourceMappingURL=mermaid-init.d.ts.map

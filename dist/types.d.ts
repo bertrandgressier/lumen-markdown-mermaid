@@ -33,4 +33,3 @@ export interface MermaidOptions {
      */
     fallbackMessage?: string;
 }
-//# sourceMappingURL=types.d.ts.map

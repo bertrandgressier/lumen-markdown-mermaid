@@ -28,4 +28,3 @@ export declare function extractMermaidTitle(source: string): string | undefined;
  */
 export declare function mermaidExtension(opts?: MermaidOptions): MarkdownExtension;
 export type { MermaidOptions, MermaidTheme };
-//# sourceMappingURL=index.d.ts.map

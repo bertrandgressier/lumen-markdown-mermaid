@@ -30,6 +30,20 @@ export interface MermaidDiagramProps {
     /** Additional classes on the root container. */
     className?: string;
     /**
+     * Minimum height applied as an inline style on the root container while
+     * the diagram is pending (number = px, per React style semantics).
+     * Reserves space for the lazy reveal to prevent layout shift (CLS);
+     * removed once the diagram has rendered.
+     */
+    minHeight?: number | string;
+    /**
+     * Keep the raw source in the DOM as a screen-reader-only span
+     * (default `true`). Set to `false` explicitly on pages that already
+     * expose the source elsewhere, to avoid duplicating it for screen
+     * readers.
+     */
+    srOnlySource?: boolean;
+    /**
      * Optional callback invoked whenever a render fails (invalid source,
      * mermaid error, or dynamic import failure) — including renders
      * superseded by a newer source during streaming. When omitted, failures
@@ -49,8 +63,14 @@ export interface MermaidDiagramProps {
  * - Honest degradation: invalid source, render error or load failure →
  *   short message + raw source in a `<pre>`. No exception ever leaks into
  *   the React render.
+ * - Streaming-friendly: the first render of a mount is immediate;
+ *   subsequent re-renders (source/theme changes) are debounced (~150 ms)
+ *   so chunked updates collapse into a single mermaid render, keeping the
+ *   last good SVG visible meanwhile.
  * - Accessibility: `role="img"` container + `aria-label` (extracted title
- *   or prop), source technically present as `sr-only` in every state.
+ *   or prop), `aria-busy` while pending, fallback announced through a
+ *   `role="status"` live region, source technically present as `sr-only`
+ *   in every state (opt-out via `srOnlySource: false`).
  *
  * Map via the renderer:
  *
@@ -67,10 +87,13 @@ export interface MermaidDiagramProps {
  * </Markdown>
  * ```
  */
-export declare const MermaidDiagram: import("react").MemoExoticComponent<({ source, title, theme, lazy, fallbackMessage, className, onError, }: MermaidDiagramProps) => import("react").DetailedReactHTMLElement<{
+export declare const MermaidDiagram: import("react").MemoExoticComponent<({ source, title, theme, lazy, fallbackMessage, className, minHeight, srOnlySource, onError, }: MermaidDiagramProps) => import("react").DetailedReactHTMLElement<{
     className: string;
     ref: import("react").RefObject<HTMLDivElement | null>;
     'data-mermaid-theme': "dark" | "light";
+    'aria-busy': true | undefined;
+    style: {
+        minHeight: string | number;
+    } | undefined;
 }, HTMLDivElement>>;
 export type { MermaidTheme };
-//# sourceMappingURL=react.d.ts.map
