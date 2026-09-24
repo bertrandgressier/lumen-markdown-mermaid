@@ -1,7 +1,8 @@
 import { createElement, memo, useEffect, useId, useRef, useState } from 'react';
 import { extractMermaidTitle } from './index.js';
-export const DEFAULT_MERMAID_FALLBACK_MESSAGE = 'Diagramme non affiché — texte conservé';
-const DEFAULT_ARIA_LABEL = 'Diagramme Mermaid';
+import { ensureMermaidInitialized } from './mermaid-init.js';
+export const DEFAULT_MERMAID_FALLBACK_MESSAGE = 'Diagram not displayed — source preserved';
+const DEFAULT_ARIA_LABEL = 'Mermaid diagram';
 function coerceTheme(theme) {
     return theme === 'dark' ? 'dark' : 'light';
 }
@@ -11,12 +12,19 @@ function coerceLazy(lazy) {
     return lazy !== false && lazy !== 'false';
 }
 /**
- * Résout `prefers-color-scheme` et s'abonne à ses changements. Retombe sur
- * `false` (light) quand `matchMedia` est indisponible (SSR, environnement de
- * test sans mock).
+ * Resolves `prefers-color-scheme` and subscribes to its changes. Falls back
+ * to `false` (light) when `matchMedia` is unavailable (SSR, test
+ * environment without a mock).
  */
 function usePrefersDark(enabled) {
-    const [dark, setDark] = useState(false);
+    // Lazy initializer: read the current scheme on the very first render so
+    // `theme: 'auto'` never renders light-first on dark systems. SSR-safe:
+    // returns false on the server; the initial JSX does not depend on the
+    // theme (mermaid renders happen in effects only), so there is no
+    // hydration mismatch.
+    const [dark, setDark] = useState(() => typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
     useEffect(() => {
         if (!enabled)
             return;
@@ -33,20 +41,20 @@ function usePrefersDark(enabled) {
     return dark;
 }
 /**
- * Composant de rendu mermaid pour `mermaidExtension()`.
+ * Mermaid rendering component for `mermaidExtension()`.
  *
- * - mermaid.js est chargé en **import dynamique uniquement** (jamais
- *   statique) : aucun coût de bundle tant qu'aucun diagramme n'est visible.
- * - `lazy` (défaut `true`) : le rendu ne démarre qu'à l'entrée dans le
- *   viewport (IntersectionObserver, marge de 200 px ; rendu immédiat si
- *   l'API est absente).
- * - Dégradation honnête : source invalide, erreur de rendu ou échec du
- *   chargement → message court + source brute dans un `<pre>`. Aucune
- *   exception ne fuit vers le rendu React.
- * - Accessibilité : conteneur `role="img"` + `aria-label` (titre extrait ou
- *   prop), source techniquement présente en `sr-only` dans tous les états.
+ * - mermaid.js is loaded via **dynamic import only** (never static): zero
+ *   bundle cost as long as no diagram is visible.
+ * - `lazy` (default `true`): rendering starts only when the diagram enters
+ *   the viewport (IntersectionObserver, 200 px margin; immediate render
+ *   when the API is missing).
+ * - Honest degradation: invalid source, render error or load failure →
+ *   short message + raw source in a `<pre>`. No exception ever leaks into
+ *   the React render.
+ * - Accessibility: `role="img"` container + `aria-label` (extracted title
+ *   or prop), source technically present as `sr-only` in every state.
  *
- * Mapper via le renderer :
+ * Map via the renderer:
  *
  * ```tsx
  * import { Markdown } from '@tanstack/markdown/react'
@@ -61,7 +69,7 @@ function usePrefersDark(enabled) {
  * </Markdown>
  * ```
  */
-export const MermaidDiagram = memo(function MermaidDiagram({ source, title, theme, lazy, fallbackMessage = DEFAULT_MERMAID_FALLBACK_MESSAGE, className, }) {
+export const MermaidDiagram = memo(function MermaidDiagram({ source, title, theme, lazy, fallbackMessage = DEFAULT_MERMAID_FALLBACK_MESSAGE, className, onError, }) {
     const code = source ?? '';
     const wantsLazy = coerceLazy(lazy);
     const isAuto = theme === 'auto';
@@ -74,9 +82,15 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, title, them
     const [status, setStatus] = useState({ state: 'pending' });
     const [visible, setVisible] = useState(!wantsLazy);
     const containerRef = useRef(null);
+    // Always call the latest onError without adding it to the render-effect
+    // deps (an inline callback must not trigger a mermaid re-render).
+    const onErrorRef = useRef(onError);
+    useEffect(() => {
+        onErrorRef.current = onError;
+    });
     const rawId = useId();
     const mermaidId = `mmd-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
-    // Rendu à la demande : IntersectionObserver sur le conteneur racine.
+    // On-demand rendering: IntersectionObserver on the root container.
     useEffect(() => {
         if (!wantsLazy || visible)
             return;
@@ -96,35 +110,45 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, title, them
         observer.observe(element);
         return () => observer.disconnect();
     }, [wantsLazy, visible]);
-    // Rendu mermaid : import dynamique unique, erreurs strictement bornées.
+    // Mermaid rendering: single dynamic import, strictly bounded errors.
     useEffect(() => {
         if (!visible)
             return;
         let cancelled = false;
-        setStatus({ state: 'pending' });
+        // Stale-while-revalidate: keep displaying the last good SVG while
+        // re-rendering (e.g. after a source/theme change); only fall back to
+        // the pending placeholder when no SVG has been rendered yet — no blank
+        // flash during updates.
+        setStatus((previous) => (previous.state === 'ok' ? previous : { state: 'pending' }));
         import('mermaid')
             .then(async (module) => {
             if (cancelled)
                 return;
             const mermaid = module.default;
-            mermaid.initialize({
-                startOnLoad: false,
-                securityLevel: 'strict',
-                theme: resolvedTheme === 'dark' ? 'dark' : 'default',
-            });
+            // Memoized per theme: no repeated global config resets (see
+            // mermaid-init.ts).
+            ensureMermaidInitialized(mermaid, resolvedTheme);
             const { svg } = await mermaid.render(mermaidId, code);
             if (cancelled)
                 return;
             setStatus({ state: 'ok', svg });
         })
-            .catch(() => {
-            if (cancelled)
-                return;
-            // mermaid peut laisser un nœud d'erreur orphelin dans le DOM.
+            .catch((error) => {
+            // mermaid may leave an orphan error node in the DOM. The node id is
+            // tied to this specific render attempt, so clean it up even when
+            // the render has been superseded (cancelled).
             if (typeof document !== 'undefined') {
                 document.getElementById(`d${mermaidId}`)?.remove();
                 document.getElementById(mermaidId)?.remove();
             }
+            if (onErrorRef.current) {
+                onErrorRef.current(error);
+            }
+            else {
+                console.error('mermaid render failed', error);
+            }
+            if (cancelled)
+                return;
             setStatus({ state: 'error' });
         });
         return () => {
@@ -134,7 +158,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, title, them
     const ariaLabel = title ?? extractMermaidTitle(code) ?? DEFAULT_ARIA_LABEL;
     const rootClass = ['mermaid-diagram', className].filter(Boolean).join(' ');
     return createElement('div', { className: rootClass, ref: containerRef, 'data-mermaid-theme': resolvedTheme }, 
-    // Source techniquement présente dans tous les états (sr-only).
+    // Source technically present in every state (sr-only).
     createElement('span', { className: 'mermaid-sr-only' }, createElement('code', null, code)), status.state === 'ok'
         ? createElement('div', {
             className: 'mermaid-svg',
