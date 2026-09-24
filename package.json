@@ -1,6 +1,6 @@
 {
   "name": "lumen-markdown-mermaid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mermaid extension for @tanstack/markdown with lazy, accessible, gracefully-degrading React rendering",
   "license": "MIT",
   "author": "Bertrand GRESSIER",
@@ -26,7 +26,8 @@
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "sideEffects": false,
   "scripts": {
