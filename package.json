@@ -1,17 +1,17 @@
 {
-  "name": "lumen-markdown-mermaid",
+  "name": "tanstack-markdown-mermaid",
   "version": "0.2.0",
   "description": "Mermaid extension for @tanstack/markdown with lazy, accessible, gracefully-degrading React rendering",
   "license": "MIT",
   "author": "Bertrand GRESSIER",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bertrandgressier/lumen-markdown-mermaid.git"
+    "url": "https://github.com/bertrandgressier/tanstack-markdown-mermaid.git"
   },
   "bugs": {
-    "url": "https://github.com/bertrandgressier/lumen-markdown-mermaid/issues"
+    "url": "https://github.com/bertrandgressier/tanstack-markdown-mermaid/issues"
   },
-  "homepage": "https://github.com/bertrandgressier/lumen-markdown-mermaid#readme",
+  "homepage": "https://github.com/bertrandgressier/tanstack-markdown-mermaid#readme",
   "type": "module",
   "exports": {
     ".": {

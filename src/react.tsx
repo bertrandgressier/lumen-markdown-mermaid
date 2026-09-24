@@ -135,8 +135,8 @@ function usePrefersDark(enabled: boolean): boolean {
  *
  * ```tsx
  * import { Markdown } from '@tanstack/markdown/react'
- * import { mermaidExtension } from 'lumen-markdown-mermaid'
- * import { MermaidDiagram } from 'lumen-markdown-mermaid/react'
+ * import { mermaidExtension } from 'tanstack-markdown-mermaid'
+ * import { MermaidDiagram } from 'tanstack-markdown-mermaid/react'
  *
  * <Markdown
  *   extensions={[mermaidExtension()]}

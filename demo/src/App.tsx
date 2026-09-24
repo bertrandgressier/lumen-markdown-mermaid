@@ -115,7 +115,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">
-          <h1>lumen-markdown-mermaid</h1>
+          <h1>tanstack-markdown-mermaid</h1>
           <p>Mermaid diagrams in @tanstack/markdown — lazy, accessible, streaming-friendly</p>
         </div>
         <div className="theme-switch" role="group" aria-label="Theme">

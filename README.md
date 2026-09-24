@@ -1,4 +1,4 @@
-# lumen-markdown-mermaid
+# tanstack-markdown-mermaid
 
 [Mermaid](https://mermaid.js.org) diagram rendering for [`@tanstack/markdown`](https://tanstack.com/markdown): captures fenced ` ```mermaid ` / ` ~~~mermaid ` blocks and renders them through an accessible, lazily-loaded React component that degrades honestly.
 
@@ -13,15 +13,15 @@ Built for dense corpora (course pages, tutor responses) where an invalid diagram
 The package is not yet published on npm. Install it as a git dependency:
 
 ```bash
-pnpm add github:bertrandgressier/lumen-markdown-mermaid
-# npm install github:bertrandgressier/lumen-markdown-mermaid
-# yarn add github:bertrandgressier/lumen-markdown-mermaid
+pnpm add github:bertrandgressier/tanstack-markdown-mermaid
+# npm install github:bertrandgressier/tanstack-markdown-mermaid
+# yarn add github:bertrandgressier/tanstack-markdown-mermaid
 ```
 
 `dist/` is committed to the repository, so consumers need no build step.
 
 - `@tanstack/markdown` is a peer dependency — install it yourself (`pnpm add @tanstack/markdown react`).
-- `react` (>= 18) is an optional peer, only required for the `lumen-markdown-mermaid/react` subpath.
+- `react` (>= 18) is an optional peer, only required for the `tanstack-markdown-mermaid/react` subpath.
 - `mermaid` is a direct dependency of the package, loaded dynamically.
 - The package is ESM-only (no CommonJS entry).
 
@@ -30,9 +30,9 @@ pnpm add github:bertrandgressier/lumen-markdown-mermaid
 Not available yet. When the package is published:
 
 ```bash
-pnpm add lumen-markdown-mermaid @tanstack/markdown react
-# npm install lumen-markdown-mermaid @tanstack/markdown react
-# yarn add lumen-markdown-mermaid @tanstack/markdown react
+pnpm add tanstack-markdown-mermaid @tanstack/markdown react
+# npm install tanstack-markdown-mermaid @tanstack/markdown react
+# yarn add tanstack-markdown-mermaid @tanstack/markdown react
 ```
 
 ## Demo
@@ -59,8 +59,8 @@ It renders an editable markdown document — a valid flowchart (with `accTitle:`
 
 ```tsx
 import { Markdown } from '@tanstack/markdown/react'
-import { mermaidExtension } from 'lumen-markdown-mermaid'
-import { MermaidDiagram } from 'lumen-markdown-mermaid/react'
+import { mermaidExtension } from 'tanstack-markdown-mermaid'
+import { MermaidDiagram } from 'tanstack-markdown-mermaid/react'
 
 export function Page() {
   return (
@@ -84,7 +84,7 @@ The extension emits a `component` node (tag `MermaidDiagram`, raw source in `pro
 
 ```ts
 import { parseMarkdown } from '@tanstack/markdown'
-import { mermaidExtension } from 'lumen-markdown-mermaid'
+import { mermaidExtension } from 'tanstack-markdown-mermaid'
 
 const doc = parseMarkdown('```mermaid\ngraph TD; A-->B\n```', {
   extensions: [mermaidExtension()],
@@ -99,9 +99,9 @@ The extension's `renderHtml` hook honestly emits the escaped source inside `<pre
 ## API
 
 ```ts
-import { mermaidExtension, extractMermaidTitle } from 'lumen-markdown-mermaid'
-import type { MermaidOptions, MermaidTheme } from 'lumen-markdown-mermaid'
-import { MermaidDiagram } from 'lumen-markdown-mermaid/react'
+import { mermaidExtension, extractMermaidTitle } from 'tanstack-markdown-mermaid'
+import type { MermaidOptions, MermaidTheme } from 'tanstack-markdown-mermaid'
+import { MermaidDiagram } from 'tanstack-markdown-mermaid/react'
 ```
 
 ### `mermaidExtension(opts?): MarkdownExtension`

@@ -66,7 +66,7 @@ function isMermaidComponentNode(node: BlockNode | InlineNode): node is Component
  *
  * The React renderer maps the tag (`MermaidDiagram` by default) to the
  * rendering component via `components: { MermaidDiagram }` — see the
- * `lumen-markdown-mermaid/react` sub-path. The string HTML renderer's
+ * `tanstack-markdown-mermaid/react` sub-path. The string HTML renderer's
  * `renderHtml` hook, which cannot execute mermaid, honestly emits the
  * source inside a `<pre class="mermaid-source">`.
  *
