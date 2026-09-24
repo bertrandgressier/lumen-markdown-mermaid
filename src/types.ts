@@ -1,36 +1,36 @@
 /**
- * Thème appliqué au rendu mermaid.
+ * Theme applied to the mermaid rendering.
  *
- * - `'light'` : thème mermaid `default`.
- * - `'dark'` : thème mermaid `dark`.
- * - `'auto'` : suit `prefers-color-scheme` (re-rendu au changement de scheme),
- *   retombe sur `light` quand l'API est indisponible (SSR, vieux navigateurs).
+ * - `'light'`: mermaid `default` theme.
+ * - `'dark'`: mermaid `dark` theme.
+ * - `'auto'`: follows `prefers-color-scheme` (re-renders on scheme change),
+ *   falls back to `light` when the API is unavailable (SSR, old browsers).
  */
 export type MermaidTheme = 'light' | 'dark' | 'auto'
 
 /**
- * Options de l'extension mermaid. Chaque option est propagée dans les
- * `properties` du nœud `component` produit, de sorte que le composant React
- * mappé (`components: { MermaidDiagram }`) les reçoit comme valeurs par
- * défaut — restent surchargeables en usage direct JSX.
+ * Options for the mermaid extension. Each option is propagated into the
+ * `properties` of the produced `component` node, so that the mapped React
+ * component (`components: { MermaidDiagram }`) receives them as default
+ * values — still overridable in direct JSX usage.
  */
 export interface MermaidOptions {
   /**
-   * Nom du tag du nœud `component`, à mapper via l'option `components` du
-   * renderer. Default `'MermaidDiagram'`.
+   * Tag name of the `component` node, to be mapped via the renderer's
+   * `components` option. Default `'MermaidDiagram'`.
    */
   tagName?: string
   /**
-   * Thème de rendu. Default `'light'`.
+   * Rendering theme. Default `'light'`.
    */
   theme?: MermaidTheme
   /**
-   * Rendu à la demande via IntersectionObserver. Default `true`.
+   * On-demand rendering via IntersectionObserver. Default `true`.
    */
   lazy?: boolean
   /**
-   * Message court affiché en repli quand le diagramme ne peut pas être rendu.
-   * Default `'Diagramme non affiché — texte conservé'`.
+   * Short message displayed as a fallback when the diagram cannot be
+   * rendered. Default `'Diagram not displayed — source preserved'`.
    */
   fallbackMessage?: string
 }

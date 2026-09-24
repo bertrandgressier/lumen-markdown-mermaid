@@ -5,12 +5,12 @@ const MERMAID_COMPONENT_NAME = 'mermaid'
 const DEFAULT_MERMAID_TAG_NAME = 'MermaidDiagram'
 
 /**
- * Extrait le titre accessible d'une source mermaid, dans l'ordre :
+ * Extracts the accessible title from a mermaid source, in order:
  * 1. frontmatter `---\ntitle: X\n---`,
  * 2. directive `accTitle: X`.
  *
- * Retourne `undefined` quand aucun titre n'est présent — l'appelant fournit
- * alors son propre libellé aria.
+ * Returns `undefined` when no title is present — the caller then provides
+ * its own aria label.
  */
 export function extractMermaidTitle(source: string): string | undefined {
   const normalized = source.replace(/\r\n/g, '\n')
@@ -35,12 +35,12 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;')
 }
 
-/** Ouvre une fence : jusqu'à 3 espaces, 3+ backticks ou tildes, info string. */
+/** Opens a fence: up to 3 spaces, 3+ backticks or tildes, info string. */
 const FENCE_OPEN_RE = /^( {0,3})(`{3,}|~{3,})[ \t]*(.*)$/
 
 /**
- * Retire au plus `max` espaces en tête (dédent des blocs imbriqués dans des
- * listes), comme le parseur de fences natif.
+ * Strips at most `max` leading spaces (dedenting blocks nested inside
+ * lists), like the native fence parser.
  */
 function stripUpTo(line: string, max: number): string {
   let n = 0
@@ -58,21 +58,21 @@ function isMermaidComponentNode(node: BlockNode | InlineNode): node is Component
 }
 
 /**
- * Extension markdown mermaid pour `@tanstack/markdown`.
+ * Mermaid markdown extension for `@tanstack/markdown`.
  *
- * Capture les blocs clôturés ` ```mermaid ` et ` ~~~mermaid ` (fence de 3+
- * caractères, jusqu'à 3 espaces d'indentation, imbriquables dans des listes)
- * et émet un nœud `component` portant la source brute dans `properties.source`.
+ * Captures closed ` ```mermaid ` and ` ~~~mermaid ` blocks (fence of 3+
+ * characters, up to 3 spaces of indentation, nestable inside lists) and
+ * emits a `component` node carrying the raw source in `properties.source`.
  *
- * Le renderer React mappe le tag (`MermaidDiagram` par défaut) vers le
- * composant de rendu via `components: { MermaidDiagram }` — voir le sous-path
- * `lumen-markdown-mermaid/react`. Le hook `renderHtml` du renderer HTML
- * string, qui ne peut pas exécuter mermaid, émet honnêtement la source dans
- * un `<pre class="mermaid-source">`.
+ * The React renderer maps the tag (`MermaidDiagram` by default) to the
+ * rendering component via `components: { MermaidDiagram }` — see the
+ * `lumen-markdown-mermaid/react` sub-path. The string HTML renderer's
+ * `renderHtml` hook, which cannot execute mermaid, honestly emits the
+ * source inside a `<pre class="mermaid-source">`.
  *
- * Une fence non clôturée est consommée jusqu'à la fin du document
- * (compatibilité streaming) : le contenu partiel devient une source mermaid
- * et le composant dégradera proprement tant qu'elle est invalide.
+ * An unclosed fence is consumed up to the end of the document (streaming
+ * compatibility): the partial content becomes a mermaid source and the
+ * component degrades gracefully for as long as it is invalid.
  */
 export function mermaidExtension(opts?: MermaidOptions): MarkdownExtension {
   const tagName = opts?.tagName ?? DEFAULT_MERMAID_TAG_NAME
@@ -104,8 +104,9 @@ export function mermaidExtension(opts?: MermaidOptions): MarkdownExtension {
       const indent = open[1].length
       const fence = open[2]
       const fenceChar = fence[0]
-      // CommonMark : la fence fermante utilise le même caractère, longueur >=
-      // l'ouvrante, jusqu'à 3 espaces d'indentation, rien d'autre sur la ligne.
+      // CommonMark: the closing fence uses the same character, is at least
+      // as long as the opening one, allows up to 3 spaces of indentation,
+      // and nothing else on the line.
       const closeRe = new RegExp(`^ {0,3}${fenceChar}{${fence.length},}[ \t]*$`)
 
       let i = context.index + 1
@@ -119,7 +120,7 @@ export function mermaidExtension(opts?: MermaidOptions): MarkdownExtension {
         content.push(stripUpTo(l, indent))
         i++
       }
-      // Fence non clôturée : consommée jusqu'à la fin (streaming).
+      // Unclosed fence: consumed up to the end (streaming).
       context.consume(i - context.index)
       return emit(content.join('\n'))
     },

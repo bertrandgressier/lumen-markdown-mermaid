@@ -40,8 +40,8 @@ function findCodeNodes(doc: unknown): string[] {
 const SIMPLE = 'graph TD; A-->B'
 
 describe('mermaidExtension — parsing', () => {
-  it('capture un bloc ```mermaid en nœud component avec la source brute', () => {
-    const doc = parseMarkdown(`Avant.\n\n\`\`\`mermaid\n${SIMPLE}\n\`\`\`\n\nAprès.`, {
+  it('captures a ```mermaid block as a component node carrying the raw source', () => {
+    const doc = parseMarkdown(`Before.\n\n\`\`\`mermaid\n${SIMPLE}\n\`\`\`\n\nAfter.`, {
       extensions: [mermaidExtension()],
     })
     const nodes = findMermaidNodes(doc)
@@ -51,7 +51,7 @@ describe('mermaidExtension — parsing', () => {
     expect(nodes[0].children).toEqual([])
   })
 
-  it('capture un bloc ~~~mermaid', () => {
+  it('captures a ~~~mermaid block', () => {
     const doc = parseMarkdown(`~~~mermaid\n${SIMPLE}\n~~~`, {
       extensions: [mermaidExtension()],
     })
@@ -59,7 +59,7 @@ describe('mermaidExtension — parsing', () => {
     expect(findMermaidNodes(doc)[0].properties?.source).toBe(SIMPLE)
   })
 
-  it('accepte les fences longues (4+ caractères) et le retour chariot', () => {
+  it('accepts long fences (4+ characters) and carriage returns', () => {
     const doc = parseMarkdown(`\`\`\`\`mermaid\r\n${SIMPLE}\r\n\`\`\`\``, {
       extensions: [mermaidExtension()],
     })
@@ -67,12 +67,12 @@ describe('mermaidExtension — parsing', () => {
     expect(findMermaidNodes(doc)[0].properties?.source).toBe(SIMPLE)
   })
 
-  it('gère plusieurs blocs mermaid dans un même document', () => {
+  it('handles several mermaid blocks in the same document', () => {
     const md = [
       '```mermaid',
       'graph TD; A-->B',
       '```',
-      'texte',
+      'text',
       '~~~mermaid',
       'pie',
       '  "x" : 1',
@@ -89,31 +89,31 @@ describe('mermaidExtension — parsing', () => {
     expect(nodes[2].properties?.source).toBe('sequenceDiagram\n  A->>B: hi')
   })
 
-  it('capture un bloc mermaid indenté dans un item de liste', () => {
-    const md = ['- item\n  ```mermaid\n  graph TD\n    A-->B\n  ```\n- suite'].join('\n')
+  it('captures a mermaid block indented inside a list item', () => {
+    const md = ['- item\n  ```mermaid\n  graph TD\n    A-->B\n  ```\n- next'].join('\n')
     const doc = parseMarkdown(md, { extensions: [mermaidExtension()] })
     const nodes = findMermaidNodes(doc)
     expect(nodes).toHaveLength(1)
-    // le contenu est désindenté du retrait de la fence
+    // the content is dedented by the fence indentation
     expect(nodes[0].properties?.source).toBe('graph TD\n  A-->B')
   })
 
-  it('laisse les fences non-mermaid au parseur de code natif', () => {
+  it('leaves non-mermaid fences to the native code parser', () => {
     const md = '```js\nconst x = 1\n```\n\n```mermaidinfo\nnot mermaid\n```'
     const doc = parseMarkdown(md, { extensions: [mermaidExtension()] })
     expect(findMermaidNodes(doc)).toHaveLength(0)
     expect(findCodeNodes(doc)[0]).toContain('const x = 1')
   })
 
-  it('ignore une info string qui contient mermaid sans être mermaid', () => {
+  it('ignores an info string containing mermaid without being mermaid', () => {
     const doc = parseMarkdown('```mermaidish\nfoo\n```', {
       extensions: [mermaidExtension()],
     })
     expect(findMermaidNodes(doc)).toHaveLength(0)
   })
 
-  it('consomme une fence non clôturée jusqu’à la fin (streaming)', () => {
-    const doc = parseMarkdown(`paragraphe\n\n\`\`\`mermaid\n${SIMPLE}`, {
+  it('consumes an unclosed fence up to the end (streaming)', () => {
+    const doc = parseMarkdown(`paragraph\n\n\`\`\`mermaid\n${SIMPLE}`, {
       extensions: [mermaidExtension()],
     })
     const nodes = findMermaidNodes(doc)
@@ -121,26 +121,26 @@ describe('mermaidExtension — parsing', () => {
     expect(nodes[0].properties?.source).toBe(SIMPLE)
   })
 
-  it('propage tagName, theme, lazy et fallbackMessage dans les properties', () => {
+  it('propagates tagName, theme, lazy and fallbackMessage into the properties', () => {
     const doc = parseMarkdown('```mermaid\nfoo\n```', {
       extensions: [
         mermaidExtension({
           tagName: 'MyDiagram',
           theme: 'dark',
           lazy: false,
-          fallbackMessage: 'Pas de schéma',
+          fallbackMessage: 'No diagram',
         }),
       ],
     })
     expect(findMermaidNodes(doc)[0]).toMatchObject({
       tagName: 'MyDiagram',
-      properties: { source: 'foo', theme: 'dark', lazy: 'false', fallbackMessage: 'Pas de schéma' },
+      properties: { source: 'foo', theme: 'dark', lazy: 'false', fallbackMessage: 'No diagram' },
     })
   })
 })
 
-describe('mermaidExtension — renderHtml (dégradation string)', () => {
-  it('émet la source échappée dans un pre.mermaid-source pour le renderer HTML', () => {
+describe('mermaidExtension — renderHtml (string degradation)', () => {
+  it('emits the escaped source in a pre.mermaid-source for the HTML renderer', () => {
     const html = renderHtml('```mermaid\ngraph TD; A-->B\n```', {
       extensions: [mermaidExtension()],
     })
@@ -151,26 +151,24 @@ describe('mermaidExtension — renderHtml (dégradation string)', () => {
 })
 
 describe('extractMermaidTitle', () => {
-  it('extrait le title du frontmatter', () => {
-    expect(extractMermaidTitle('---\ntitle: Cycle de Krebs\n---\ngraph TD; A-->B')).toBe(
-      'Cycle de Krebs',
+  it('extracts the title from frontmatter', () => {
+    expect(extractMermaidTitle('---\ntitle: Krebs cycle\n---\ngraph TD; A-->B')).toBe('Krebs cycle')
+  })
+
+  it('extracts the accTitle directive', () => {
+    expect(extractMermaidTitle('flowchart TD\naccTitle: Glycolytic pathway\nA-->B')).toBe(
+      'Glycolytic pathway',
     )
   })
 
-  it('extrait la directive accTitle', () => {
-    expect(extractMermaidTitle('flowchart TD\naccTitle: Voie glycolytique\nA-->B')).toBe(
-      'Voie glycolytique',
-    )
-  })
-
-  it("retire les guillemets entourant la valeur et ignore les titres vides", () => {
-    expect(extractMermaidTitle('---\ntitle: "Réflexe pupillaire"\n---\ngraph TD')).toBe(
-      'Réflexe pupillaire',
+  it('strips surrounding quotes and ignores empty titles', () => {
+    expect(extractMermaidTitle('---\ntitle: "Pupillary reflex"\n---\ngraph TD')).toBe(
+      'Pupillary reflex',
     )
     expect(extractMermaidTitle('---\ntitle:\n---\ngraph TD')).toBeUndefined()
   })
 
-  it('retourne undefined sans titre', () => {
+  it('returns undefined when no title is present', () => {
     expect(extractMermaidTitle('graph TD; A-->B')).toBeUndefined()
   })
 })
