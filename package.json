@@ -1,0 +1,65 @@
+{
+  "name": "lumen-markdown-mermaid",
+  "version": "0.1.0",
+  "description": "Mermaid extension for @tanstack/markdown with lazy, accessible, gracefully-degrading React rendering",
+  "license": "MIT",
+  "author": "Bertrand GRESSIER",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bertrandgressier/lumen-markdown-mermaid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bertrandgressier/lumen-markdown-mermaid/issues"
+  },
+  "homepage": "https://github.com/bertrandgressier/lumen-markdown-mermaid#readme",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm exec tsc",
+    "test": "vitest run",
+    "typecheck": "pnpm exec tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "mermaid": "^12.0.0"
+  },
+  "peerDependencies": {
+    "@tanstack/markdown": ">=0.0.13 <0.1.0",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tanstack/markdown": "0.0.15",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=18"
+  }
+}
