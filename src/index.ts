@@ -1,5 +1,5 @@
-import type { BlockNode, ComponentNode, MarkdownExtension } from '@tanstack/markdown'
-import type { MermaidOptions } from './types.js'
+import type { BlockNode, ComponentNode, InlineNode, MarkdownExtension } from '@tanstack/markdown'
+import type { MermaidOptions, MermaidTheme } from './types.js'
 
 const MERMAID_COMPONENT_NAME = 'mermaid'
 const DEFAULT_MERMAID_TAG_NAME = 'MermaidDiagram'
@@ -53,7 +53,7 @@ function isMermaidInfo(info: string): boolean {
   return token === 'mermaid' || token.startsWith('mermaid ')
 }
 
-function isMermaidComponentNode(node: BlockNode): node is ComponentNode {
+function isMermaidComponentNode(node: BlockNode | InlineNode): node is ComponentNode {
   return node.type === 'component' && node.name === MERMAID_COMPONENT_NAME
 }
 
