@@ -37,6 +37,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: demo/pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            demo/pnpm-lock.yaml
+      # The demo typechecks the library source (../src), so tsc resolves the
+      # library's own dependencies from the root node_modules.
+      - name: Install library dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
       - run: pnpm install --frozen-lockfile
       - run: pnpm build

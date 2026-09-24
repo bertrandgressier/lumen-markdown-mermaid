@@ -45,6 +45,8 @@ pnpm install
 pnpm dev
 ```
 
+> `pnpm build` in `demo/` also typechecks the library source, so keep the root dependencies installed (`pnpm install` at the repository root) when building the demo.
+
 It renders an editable markdown document — a valid flowchart (with `accTitle:`), a sequence diagram, a pie chart, and one deliberately invalid block — through the real integration: `@tanstack/markdown/react` + `mermaidExtension` + `MermaidDiagram`, imported from the library source. Use it to try:
 
 - **Light / Dark / Auto** theming (drives both the page and the diagrams),
