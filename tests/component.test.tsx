@@ -20,6 +20,16 @@ const SVG = '<svg viewBox="0 0 100 100"><circle r="40"/></svg>'
 const SVG_ALT = '<svg viewBox="0 0 100 100"><rect width="10" height="10"/></svg>'
 const SIMPLE = 'graph TD; A-->B'
 
+// Must mirror RE_RENDER_DEBOUNCE_MS in src/react.tsx (module-private there).
+const RE_RENDER_DEBOUNCE_MS = 150
+
+/** Advances fake timers past the streaming debounce, inside act(). */
+async function advanceDebounce() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(RE_RENDER_DEBOUNCE_MS)
+  })
+}
+
 class MockIntersectionObserver {
   static instances: MockIntersectionObserver[] = []
   static reset() {
@@ -151,11 +161,19 @@ describe('MermaidDiagram — honest degradation', () => {
     const { container, rerender } = diagram({ source: SIMPLE, onError })
     await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
 
-    // A deferred (doomed) render is superseded by a newer source before settling.
-    rerender(createElement(MermaidDiagram, { source: 'graph TD; B-->C', lazy: false, onError }))
-    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(2))
-    rerender(createElement(MermaidDiagram, { source: 'graph TD; C-->D', lazy: false, onError }))
-    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(3))
+    // A deferred (doomed) render is superseded by a newer source before
+    // settling. Re-renders are debounced → fake timers.
+    vi.useFakeTimers()
+    try {
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; B-->C', lazy: false, onError }))
+      await advanceDebounce()
+      expect(mermaidRender).toHaveBeenCalledTimes(2)
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; C-->D', lazy: false, onError }))
+      await advanceDebounce()
+      expect(mermaidRender).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
     expect(document.querySelector('[id^="dmmd-"]')).not.toBeNull()
 
     await act(async () => {
@@ -196,8 +214,15 @@ describe('MermaidDiagram — stale-while-revalidate', () => {
       expect(container.querySelector('.mermaid-svg')?.innerHTML).toContain('<circle')
     })
 
-    rerender(createElement(MermaidDiagram, { source: 'graph TD; B-->C', lazy: false }))
-    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(2))
+    // Re-render after a source change is debounced (streaming) → fake timers.
+    vi.useFakeTimers()
+    try {
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; B-->C', lazy: false }))
+      await advanceDebounce()
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(mermaidRender).toHaveBeenCalledTimes(2)
 
     // While the new render is in flight, the old SVG stays visible —
     // no pending placeholder, no fallback, no blank flash.
@@ -212,6 +237,54 @@ describe('MermaidDiagram — stale-while-revalidate', () => {
     await waitFor(() => {
       expect(container.querySelector('.mermaid-svg')?.innerHTML).toContain('<rect')
     })
+  })
+})
+
+describe('MermaidDiagram — streaming debounce', () => {
+  it('first render of a mount is immediate — no debounce, no timer advance', async () => {
+    vi.useFakeTimers()
+    try {
+      mermaidRender.mockResolvedValue({ svg: SVG })
+      const { container } = diagram()
+      // Flush microtasks only: the debounce delay is never advanced. If the
+      // first render were debounced, the SVG could not be there yet.
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(mermaidRender).toHaveBeenCalledTimes(1)
+      expect(container.querySelector('.mermaid-svg')).not.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('collapses rapid source updates into a single render with the final source', async () => {
+    mermaidRender.mockResolvedValue({ svg: SVG })
+    const { container, rerender } = diagram({ source: SIMPLE })
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
+    expect(mermaidRender).toHaveBeenCalledTimes(1)
+
+    vi.useFakeTimers()
+    try {
+      // Three rapid streaming chunks — none triggers a render on its own.
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; A-->B1', lazy: false }))
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; A-->B2', lazy: false }))
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; A-->B3', lazy: false }))
+      expect(mermaidRender).toHaveBeenCalledTimes(1)
+
+      // One single advance past the debounce → exactly one re-render,
+      // with the FINAL source.
+      await advanceDebounce()
+      expect(mermaidRender).toHaveBeenCalledTimes(2)
+      expect(mermaidRender).toHaveBeenLastCalledWith(expect.any(String), 'graph TD; A-->B3')
+
+      // Advancing again does not produce extra renders.
+      await advanceDebounce()
+      expect(mermaidRender).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
   })
 })
 
@@ -240,6 +313,28 @@ describe('MermaidDiagram — error reporting', () => {
     } finally {
       consoleError.mockRestore()
     }
+  })
+
+  it('still fires onError when a debounced (streaming) re-render fails', async () => {
+    const onError = vi.fn()
+    mermaidRender.mockResolvedValueOnce({ svg: SVG }).mockRejectedValueOnce(new Error('stream'))
+    const { container, rerender } = diagram({ onError })
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
+    expect(onError).not.toHaveBeenCalled()
+
+    vi.useFakeTimers()
+    try {
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; B-->C', lazy: false, onError }))
+      await advanceDebounce()
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+    expect(onError).toHaveBeenCalledWith(expect.any(Error))
+    // Degradation identical to a direct-render failure.
+    expect(container.querySelector('.mermaid-fallback-message')).not.toBeNull()
+    expect(container.querySelector('.mermaid-fallback-source')?.textContent).toBe('graph TD; B-->C')
   })
 })
 
@@ -275,6 +370,85 @@ describe('MermaidDiagram — accessibility', () => {
         'Metabolic pathway',
       )
     })
+  })
+
+  it('marks the root aria-busy while pending and removes it once rendered', async () => {
+    let resolveRender!: (value: { svg: string }) => void
+    mermaidRender.mockImplementation(
+      () =>
+        new Promise<{ svg: string }>((resolve) => {
+          resolveRender = resolve
+        }),
+    )
+    const { container } = diagram()
+    const root = container.querySelector<HTMLElement>('.mermaid-diagram')
+    expect(root).not.toBeNull()
+    expect(root?.getAttribute('aria-busy')).toBe('true')
+    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      resolveRender({ svg: SVG })
+    })
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
+    expect(root?.getAttribute('aria-busy')).toBeNull()
+  })
+
+  it('announces the fallback message through a polite live region (role="status")', async () => {
+    mermaidRender.mockRejectedValue(new Error('x'))
+    const { container } = diagram()
+    await waitFor(() => {
+      expect(container.querySelector('.mermaid-fallback-message')).not.toBeNull()
+    })
+    expect(container.querySelector('.mermaid-fallback-message')?.getAttribute('role')).toBe('status')
+  })
+
+  it('applies minHeight while pending and removes it once rendered', async () => {
+    let resolveRender!: (value: { svg: string }) => void
+    mermaidRender.mockImplementation(
+      () =>
+        new Promise<{ svg: string }>((resolve) => {
+          resolveRender = resolve
+        }),
+    )
+    const { container } = diagram({ minHeight: 200 })
+    const root = container.querySelector<HTMLElement>('.mermaid-diagram')
+    // React style semantics: a number is treated as px.
+    expect(root?.style.minHeight).toBe('200px')
+    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      resolveRender({ svg: SVG })
+    })
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
+    expect(root?.style.minHeight).toBe('')
+  })
+
+  it('applies a string minHeight as-is while pending', async () => {
+    let resolveRender!: (value: { svg: string }) => void
+    mermaidRender.mockImplementation(
+      () =>
+        new Promise<{ svg: string }>((resolve) => {
+          resolveRender = resolve
+        }),
+    )
+    const { container } = diagram({ minHeight: '10em' })
+    expect(container.querySelector<HTMLElement>('.mermaid-diagram')?.style.minHeight).toBe('10em')
+    await waitFor(() => expect(mermaidRender).toHaveBeenCalledTimes(1))
+    await act(async () => {
+      resolveRender({ svg: SVG })
+    })
+    await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
+    expect(container.querySelector<HTMLElement>('.mermaid-diagram')?.style.minHeight).toBe('')
+  })
+
+  it('srOnlySource={false} omits the sr-only span (source stays visible in the error fallback)', async () => {
+    mermaidRender.mockRejectedValue(new Error('x'))
+    const { container } = diagram({ srOnlySource: false })
+    await waitFor(() => {
+      expect(container.querySelector('.mermaid-fallback-message')).not.toBeNull()
+    })
+    expect(container.querySelector('.mermaid-sr-only')).toBeNull()
+    expect(container.querySelector('.mermaid-fallback-source')?.textContent).toBe(SIMPLE)
   })
 })
 
@@ -347,10 +521,16 @@ describe('MermaidDiagram — theme', () => {
       'light',
     )
 
-    // System switches to dark → re-render with the dark theme.
-    await act(async () => {
-      listeners.forEach((cb) => cb({ matches: true } as MediaQueryListEvent))
-    })
+    // System switches to dark → re-render with the dark theme (debounced).
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        listeners.forEach((cb) => cb({ matches: true } as MediaQueryListEvent))
+      })
+      await advanceDebounce()
+    } finally {
+      vi.useRealTimers()
+    }
     await waitFor(() =>
       expect(mermaidInitialize).toHaveBeenLastCalledWith(expect.objectContaining({ theme: 'dark' })),
     )
@@ -383,8 +563,15 @@ describe('MermaidDiagram — theme', () => {
     const { container, rerender } = diagram()
     await waitFor(() => expect(container.querySelector('.mermaid-svg')).not.toBeNull())
 
-    // Source change (streaming update) re-runs the render effect…
-    rerender(createElement(MermaidDiagram, { source: 'graph TD; A-->C', lazy: false }))
+    // Source change (streaming update) re-runs the render effect — debounced,
+    // hence the fake timers.
+    vi.useFakeTimers()
+    try {
+      rerender(createElement(MermaidDiagram, { source: 'graph TD; A-->C', lazy: false }))
+      await advanceDebounce()
+    } finally {
+      vi.useRealTimers()
+    }
     await waitFor(() =>
       expect(container.querySelector('.mermaid-svg')?.innerHTML).toContain('rect'),
     )

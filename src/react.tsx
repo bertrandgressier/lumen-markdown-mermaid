@@ -7,6 +7,13 @@ import type { MermaidTheme } from './types.js'
 export const DEFAULT_MERMAID_FALLBACK_MESSAGE = 'Diagram not displayed — source preserved'
 const DEFAULT_ARIA_LABEL = 'Mermaid diagram'
 
+/**
+ * Re-renders of an already-mounted diagram (streaming chunk updates, theme
+ * flips) are debounced by this delay so rapid source changes collapse into
+ * a single mermaid render. The first render of a mount stays immediate.
+ */
+const RE_RENDER_DEBOUNCE_MS = 150
+
 export interface MermaidDiagramProps {
   /**
    * Raw mermaid source carried by the `component` node
@@ -36,6 +43,20 @@ export interface MermaidDiagramProps {
   fallbackMessage?: string
   /** Additional classes on the root container. */
   className?: string
+  /**
+   * Minimum height applied as an inline style on the root container while
+   * the diagram is pending (number = px, per React style semantics).
+   * Reserves space for the lazy reveal to prevent layout shift (CLS);
+   * removed once the diagram has rendered.
+   */
+  minHeight?: number | string
+  /**
+   * Keep the raw source in the DOM as a screen-reader-only span
+   * (default `true`). Set to `false` explicitly on pages that already
+   * expose the source elsewhere, to avoid duplicating it for screen
+   * readers.
+   */
+  srOnlySource?: boolean
   /**
    * Optional callback invoked whenever a render fails (invalid source,
    * mermaid error, or dynamic import failure) — including renders
@@ -101,8 +122,14 @@ function usePrefersDark(enabled: boolean): boolean {
  * - Honest degradation: invalid source, render error or load failure →
  *   short message + raw source in a `<pre>`. No exception ever leaks into
  *   the React render.
+ * - Streaming-friendly: the first render of a mount is immediate;
+ *   subsequent re-renders (source/theme changes) are debounced (~150 ms)
+ *   so chunked updates collapse into a single mermaid render, keeping the
+ *   last good SVG visible meanwhile.
  * - Accessibility: `role="img"` container + `aria-label` (extracted title
- *   or prop), source technically present as `sr-only` in every state.
+ *   or prop), `aria-busy` while pending, fallback announced through a
+ *   `role="status"` live region, source technically present as `sr-only`
+ *   in every state (opt-out via `srOnlySource: false`).
  *
  * Map via the renderer:
  *
@@ -126,6 +153,8 @@ export const MermaidDiagram = memo(function MermaidDiagram({
   lazy,
   fallbackMessage = DEFAULT_MERMAID_FALLBACK_MESSAGE,
   className,
+  minHeight,
+  srOnlySource = true,
   onError,
 }: MermaidDiagramProps) {
   const code = source ?? ''
@@ -141,6 +170,9 @@ export const MermaidDiagram = memo(function MermaidDiagram({
   const [status, setStatus] = useState<Status>({ state: 'pending' })
   const [visible, setVisible] = useState(!wantsLazy)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  // The first productive render of this mount runs immediately; every
+  // subsequent effect re-run is debounced (streaming).
+  const firstRunRef = useRef(true)
 
   // Always call the latest onError without adding it to the render-effect
   // deps (an inline callback must not trigger a mermaid re-render).
@@ -178,41 +210,56 @@ export const MermaidDiagram = memo(function MermaidDiagram({
   useEffect(() => {
     if (!visible) return
     let cancelled = false
-    // Stale-while-revalidate: keep displaying the last good SVG while
-    // re-rendering (e.g. after a source/theme change); only fall back to
-    // the pending placeholder when no SVG has been rendered yet — no blank
-    // flash during updates.
-    setStatus((previous) => (previous.state === 'ok' ? previous : { state: 'pending' }))
 
-    import('mermaid')
-      .then(async (module) => {
-        if (cancelled) return
-        const mermaid = module.default
-        // Memoized per theme: no repeated global config resets (see
-        // mermaid-init.ts).
-        ensureMermaidInitialized(mermaid, resolvedTheme)
-        const { svg } = await mermaid.render(mermaidId, code)
-        if (cancelled) return
-        setStatus({ state: 'ok', svg })
-      })
-      .catch((error: unknown) => {
-        // mermaid may leave an orphan error node in the DOM. The node id is
-        // tied to this specific render attempt, so clean it up even when
-        // the render has been superseded (cancelled).
-        if (typeof document !== 'undefined') {
-          document.getElementById(`d${mermaidId}`)?.remove()
-          document.getElementById(mermaidId)?.remove()
-        }
-        if (onErrorRef.current) {
-          onErrorRef.current(error)
-        } else {
-          console.error('mermaid render failed', error)
-        }
-        if (cancelled) return
-        setStatus({ state: 'error' })
-      })
+    const startRender = () => {
+      // Stale-while-revalidate: keep displaying the last good SVG while
+      // re-rendering (e.g. after a source/theme change); only fall back to
+      // the pending placeholder when no SVG has been rendered yet — no blank
+      // flash during updates.
+      setStatus((previous) => (previous.state === 'ok' ? previous : { state: 'pending' }))
 
+      import('mermaid')
+        .then(async (module) => {
+          if (cancelled) return
+          const mermaid = module.default
+          // Memoized per theme: no repeated global config resets (see
+          // mermaid-init.ts).
+          ensureMermaidInitialized(mermaid, resolvedTheme)
+          const { svg } = await mermaid.render(mermaidId, code)
+          if (cancelled) return
+          setStatus({ state: 'ok', svg })
+        })
+        .catch((error: unknown) => {
+          // mermaid may leave an orphan error node in the DOM. The node id is
+          // tied to this specific render attempt, so clean it up even when
+          // the render has been superseded (cancelled).
+          if (typeof document !== 'undefined') {
+            document.getElementById(`d${mermaidId}`)?.remove()
+            document.getElementById(mermaidId)?.remove()
+          }
+          if (onErrorRef.current) {
+            onErrorRef.current(error)
+          } else {
+            console.error('mermaid render failed', error)
+          }
+          if (cancelled) return
+          setStatus({ state: 'error' })
+        })
+    }
+
+    // First render for this mount: immediate. Subsequent re-runs (streaming
+    // chunk updates, theme flips): debounced so a render happens per settled
+    // source, not per chunk.
+    if (firstRunRef.current) {
+      firstRunRef.current = false
+      startRender()
+      return () => {
+        cancelled = true
+      }
+    }
+    const timer = setTimeout(startRender, RE_RENDER_DEBOUNCE_MS)
     return () => {
+      clearTimeout(timer)
       cancelled = true
     }
   }, [visible, code, resolvedTheme, mermaidId])
@@ -222,9 +269,21 @@ export const MermaidDiagram = memo(function MermaidDiagram({
 
   return createElement(
     'div',
-    { className: rootClass, ref: containerRef, 'data-mermaid-theme': resolvedTheme },
-    // Source technically present in every state (sr-only).
-    createElement('span', { className: 'mermaid-sr-only' }, createElement('code', null, code)),
+    {
+      className: rootClass,
+      ref: containerRef,
+      'data-mermaid-theme': resolvedTheme,
+      // Present only while pending — screen readers can hint at the
+      // upcoming content instead of treating the container as settled.
+      'aria-busy': status.state === 'pending' ? true : undefined,
+      style:
+        status.state === 'pending' && minHeight !== undefined ? { minHeight } : undefined,
+    },
+    // Source technically present in every state (sr-only), unless the page
+    // exposes it elsewhere and opted out via `srOnlySource: false`.
+    srOnlySource
+      ? createElement('span', { className: 'mermaid-sr-only' }, createElement('code', null, code))
+      : null,
     status.state === 'ok'
       ? createElement('div', {
           className: 'mermaid-svg',
@@ -236,7 +295,8 @@ export const MermaidDiagram = memo(function MermaidDiagram({
         ? [
             createElement(
               'p',
-              { key: 'message', className: 'mermaid-fallback-message' },
+              // Implicit polite live region: the failure gets announced.
+              { key: 'message', className: 'mermaid-fallback-message', role: 'status' },
               fallbackMessage,
             ),
             createElement('pre', { key: 'source', className: 'mermaid-fallback-source' }, code),

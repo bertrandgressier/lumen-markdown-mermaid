@@ -112,8 +112,10 @@ Each option is propagated into the node's `properties` — the mapped component 
 | `fallbackMessage` | `string`                      | `'Diagram not displayed — source preserved'` | Fallback message.                                                                                                                  |
 | `onError`         | `(error: unknown) => void`    | —                                            | Called when rendering fails (invalid source, render error, or mermaid load failure). When not provided, failures are logged via `console.error`. |
 | `className`       | `string`                      | —                                            | Additional classes on the root container.                                                                                          |
+| `minHeight`       | `number \| string`            | —                                            | Inline `min-height` on the root container while the diagram is pending (number = px, per React style semantics). Reserves space to prevent layout shift on lazy reveal; removed once rendered. |
+| `srOnlySource`    | `boolean`                     | `true`                                       | Keep the raw source in the DOM as a screen-reader-only span. Set to `false` when the page already exposes the source elsewhere.     |
 
-Rendering is flicker-free: when `source` or `theme` changes, the last rendered SVG stays visible until the new one is ready — no blank flash.
+Rendering is flicker-free: when `source` or `theme` changes, the last rendered SVG stays visible until the new one is ready — no blank flash. Re-renders of an already-mounted diagram are debounced (~150 ms), so streaming chunk updates collapse into a single render (see [Streaming](#streaming)).
 
 ### `extractMermaidTitle(source): string | undefined`
 
@@ -129,10 +131,19 @@ Invalid diagram, render error, or mermaid load failure — including a rejecting
 - orphan error nodes mermaid may have left in the DOM are cleaned up;
 - failures are reported through the optional `onError` prop, or logged via `console.error` when it is not provided.
 
+## Streaming
+
+Partial content is expected while markdown streams in: an unterminated fence is consumed to the end of the document, and a partial diagram degrades cleanly for as long as it is invalid.
+
+Re-renders of an already-mounted diagram are debounced (~150 ms): the first render of a mount is immediate, but subsequent `source` or `theme` changes collapse into a single mermaid render with the final settled source — chunk-by-chunk updates do not trigger a render per chunk. The last rendered SVG (or the pending placeholder) stays visible until the debounced render settles, and `onError` still fires for failures on this debounced path.
+
 ## Accessibility
 
 - SVG container: `role="img"` + `aria-label` (`title` prop, else title extracted from the source, else `'Mermaid diagram'`).
+- While a diagram is pending, the root carries `aria-busy="true"` (the attribute is removed once rendered), so assistive tech can hint at the upcoming content.
+- The fallback message is a `role="status"` live region (implicit polite announcement): screen readers announce the failure without stealing focus.
 - The source is **technically present in every state**: `<span class="mermaid-sr-only"><code>…</code></span>` (success, loading, lazy wait) or a visible `<pre>` (fallback).
+- Opt out of the sr-only source span with `srOnlySource={false}` when the page already exposes the diagram source elsewhere (e.g. a collapsible source view): this avoids reading the source twice. On opt-out the source remains available in the visible error-fallback `<pre>`.
 - The package is headless: you must provide the `.mermaid-sr-only` utility yourself. Required CSS:
 
 ```css
@@ -148,6 +159,8 @@ Invalid diagram, render error, or mermaid load failure — including a rejecting
 ## Lazy rendering
 
 `lazy` (default `true`): an `IntersectionObserver` (200 px margin) triggers mermaid loading and rendering when the container enters the viewport. Without the API (old browsers), rendering is immediate.
+
+To prevent layout shift when the diagram is revealed, pass `minHeight` (px number or any CSS length): it is applied as an inline `min-height` on the root while the diagram is pending, then removed once rendered.
 
 ## Known limitations
 
