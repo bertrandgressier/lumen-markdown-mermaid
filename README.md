@@ -10,29 +10,23 @@ Built for dense corpora (course pages, tutor responses) where an invalid diagram
 
 ## Installation
 
-The package is not yet published on npm. Install it as a git dependency:
-
-```bash
-pnpm add github:bertrandgressier/tanstack-markdown-mermaid
-# npm install github:bertrandgressier/tanstack-markdown-mermaid
-# yarn add github:bertrandgressier/tanstack-markdown-mermaid
-```
-
-`dist/` is committed to the repository, so consumers need no build step.
-
-- `@tanstack/markdown` is a peer dependency — install it yourself (`pnpm add @tanstack/markdown react`).
-- `react` (>= 18) is an optional peer, only required for the `tanstack-markdown-mermaid/react` subpath.
-- `mermaid` is a direct dependency of the package, loaded dynamically.
-- The package is ESM-only (no CommonJS entry).
-
-### npm (once published)
-
-Not available yet. When the package is published:
-
 ```bash
 pnpm add tanstack-markdown-mermaid @tanstack/markdown react
 # npm install tanstack-markdown-mermaid @tanstack/markdown react
 # yarn add tanstack-markdown-mermaid @tanstack/markdown react
+```
+
+- `@tanstack/markdown` is a peer dependency — install it yourself.
+- `react` (>= 18) is an optional peer, only required for the `tanstack-markdown-mermaid/react` subpath.
+- `mermaid` is a direct dependency of the package, loaded dynamically.
+- The package is ESM-only (no CommonJS entry).
+
+### Git dependency (alternative)
+
+`dist/` is committed to the repository, so the package can also be consumed as a git dependency with no build step:
+
+```bash
+pnpm add github:bertrandgressier/tanstack-markdown-mermaid
 ```
 
 ## Demo
