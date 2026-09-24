@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `aria-busy` on pending diagrams; fallback message is a `role="status"` live region.
 - Streaming re-renders of a mounted diagram are debounced (~150 ms).
 - CI workflow: typecheck, test, build, and committed-dist sync check.
+- Vite demo playground (`demo/`): live editor, light/dark/auto theming, streaming simulation, honest-fallback showcase.
 ### Changed
 - Repository content and git history fully translated to English.
 - `mermaid.initialize` is now memoized per theme (at most once per theme per page load).

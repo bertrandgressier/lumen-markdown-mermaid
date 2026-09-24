@@ -1,0 +1,4 @@
+# pnpm 12: dependency build-script approvals live here.
+# esbuild's postinstall is the only script Vite's toolchain needs.
+allowBuilds:
+  esbuild: true

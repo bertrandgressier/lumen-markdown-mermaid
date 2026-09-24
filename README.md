@@ -35,6 +35,22 @@ pnpm add lumen-markdown-mermaid @tanstack/markdown react
 # yarn add lumen-markdown-mermaid @tanstack/markdown react
 ```
 
+## Demo
+
+A small Vite playground lives in [`demo/`](./demo):
+
+```bash
+cd demo
+pnpm install
+pnpm dev
+```
+
+It renders an editable markdown document — a valid flowchart (with `accTitle:`), a sequence diagram, a pie chart, and one deliberately invalid block — through the real integration: `@tanstack/markdown/react` + `mermaidExtension` + `MermaidDiagram`, imported from the library source. Use it to try:
+
+- **Light / Dark / Auto** theming (drives both the page and the diagrams),
+- **streaming simulation** (chunked document reveals, debounced re-renders, no blank flash),
+- the **honest fallback** for invalid diagrams and the `onError` counter.
+
 ## Quick start
 
 ### With the React component (`@tanstack/markdown/react`)

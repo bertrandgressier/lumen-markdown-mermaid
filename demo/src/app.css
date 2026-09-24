@@ -1,0 +1,477 @@
+/* ---------------------------------------------------------------------------
+   Theme tokens — page chrome follows the same light/dark theme as the
+   diagrams. The app sets data-theme on <html>: 'light' | 'dark' (resolved
+   from the Light / Dark / Auto segmented control; Auto tracks
+   prefers-color-scheme).
+--------------------------------------------------------------------------- */
+
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-alt: #fafbfc;
+  --border: #e2e5ea;
+  --text: #1d242d;
+  --muted: #626c78;
+  --accent: #4c5bd4;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(76, 91, 212, 0.09);
+  --code-bg: #eef0f4;
+  --badge-bg: rgba(146, 64, 14, 0.1);
+  --badge-text: #92400e;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f1216;
+  --panel: #161b22;
+  --panel-alt: #1a2028;
+  --border: #272e39;
+  --text: #e4e8ee;
+  --muted: #96a1ad;
+  --accent: #94a0f2;
+  --accent-contrast: #10131a;
+  --accent-soft: rgba(148, 160, 242, 0.13);
+  --code-bg: #222933;
+  --badge-bg: rgba(245, 197, 99, 0.12);
+  --badge-text: #f0c368;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+   Required by the library: screen-reader-only source container.
+--------------------------------------------------------------------------- */
+
+.mermaid-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Shell — header, two independent scroll panes
+--------------------------------------------------------------------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-title h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  font-family: var(--mono);
+  letter-spacing: -0.01em;
+}
+
+.app-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+}
+
+.pane-editor {
+  border-right: 1px solid var(--border);
+}
+
+.pane-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-alt);
+}
+
+.pane-label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pane-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stream-status {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Theme segmented control
+--------------------------------------------------------------------------- */
+
+.theme-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.theme-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.theme-switch button:hover {
+  color: var(--text);
+}
+
+.theme-switch button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 550;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons + error badge
+--------------------------------------------------------------------------- */
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 550;
+}
+
+.btn-primary:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  opacity: 0.92;
+}
+
+.error-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Editor
+--------------------------------------------------------------------------- */
+
+.editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  padding: 16px 18px;
+  background: var(--panel);
+  color: var(--text);
+  caret-color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  resize: none;
+}
+
+.editor:focus {
+  outline: none;
+}
+
+.editor:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Markdown preview
+--------------------------------------------------------------------------- */
+
+.markdown-body {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 28px 56px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  overflow-wrap: break-word;
+}
+
+.markdown-body h1 {
+  font-size: 1.55em;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.7em;
+}
+
+.markdown-body h2 {
+  font-size: 1.2em;
+  letter-spacing: -0.01em;
+  margin: 1.9em 0 0.6em;
+}
+
+.markdown-body p {
+  margin: 0.7em 0;
+}
+
+.markdown-body ul {
+  margin: 0.7em 0;
+  padding-left: 1.4em;
+}
+
+.markdown-body li {
+  margin: 0.3em 0;
+}
+
+.markdown-body li::marker {
+  color: var(--muted);
+}
+
+.markdown-body code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 1.5px 5px;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Mermaid containers — never overflow horizontally
+--------------------------------------------------------------------------- */
+
+.mermaid-diagram {
+  margin: 1.1em 0;
+}
+
+.mermaid-diagram[aria-busy='true'] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  animation: mermaid-pulse 1.3s ease-in-out infinite;
+}
+
+.mermaid-diagram[aria-busy='true']::before {
+  content: 'Rendering diagram…';
+}
+
+@keyframes mermaid-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.mermaid-svg {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.mermaid-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Honest fallback: short message + preserved source */
+
+.mermaid-fallback-message {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--badge-text);
+}
+
+.mermaid-fallback-source {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--code-bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow screens: stack the panes, each scrolls on its own
+--------------------------------------------------------------------------- */
+
+@media (max-width: 880px) {
+  .panes {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .pane-editor {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app-header {
+    padding: 10px 16px;
+  }
+
+  .markdown-body {
+    padding: 20px 18px 48px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars + motion preferences
+--------------------------------------------------------------------------- */
+
+.pane-body::-webkit-scrollbar,
+.editor::-webkit-scrollbar,
+.mermaid-svg::-webkit-scrollbar,
+.mermaid-fallback-source::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.pane-body::-webkit-scrollbar-thumb,
+.editor::-webkit-scrollbar-thumb,
+.mermaid-svg::-webkit-scrollbar-thumb,
+.mermaid-fallback-source::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-diagram[aria-busy='true'] {
+    animation: none;
+  }
+
+  .theme-switch button,
+  .btn {
+    transition: none;
+  }
+}
